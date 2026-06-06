@@ -1,68 +1,35 @@
+#' ---
+#' title: "McDonald's Review Analysis"
+#' author: " "
+#' date:   " "
+#' output:
+#'   html_document:
+#'     df_print: paged
+#'     theme: readable      
+#'     highlight: kate      
+#'     toc: true         
+#'     toc_depth: 3
+#'     toc_float:
+#'       collapsed: false
+#'       smooth_scroll: true
+#'     code_folding: show    
+#'     number_sections: false
+#' ---
+
+
+#' # Setup
+knitr::opts_chunk$set(
+  message = FALSE,
+  warning = FALSE
+)
+
 library(tm)
 library(wordcloud)
 library(topicmodels)
 library(tidyverse)
 library(tidytext)
 
-#Load data
-data <- read.csv("data/McDonald_s_Reviews.csv")
-
-#Create corpus                
-corpus <- VCorpus(VectorSource(data$review))
-
-
-#Ensure UTF-8 encoding
-corpus <- tm_map(corpus, content_transformer(function(x) iconv(x, to = "UTF-8", sub = "byte")))
-
-#Remove non ASCII characters
-corpus <- tm_map(corpus, content_transformer(function(x) {
-  gsub("[^\x01-\x7F]", "", x) 
-}))
-
-#View content
-corpus[[1]][[1]][1:2]
-
-#Convert pattern to whitespace
-toSpace <- content_transformer(function (x, pattern) gsub(pattern, " ", x))
-
-#Remove tab
-corpus <- tm_map(corpus, toSpace, "[ \t]{2,}")
-
-#Transform conent to lower case
-corpus <- tm_map(corpus, content_transformer(tolower))
-
-#Custom stopwords
-custom_stop_words<- c("mcdonalds", "mcdonald", "mcdonald's", "food", "fast", "burger", "fries")
-
-#Remove unnecessary characters/words
-corpus <- tm_map(corpus, removePunctuation)
-corpus <- tm_map(corpus, removeNumbers)
-corpus <- tm_map(corpus, removeWords, c(stopwords("en"), custom_stop_words))
-corpus <- tm_map(corpus, stripWhitespace)
-
-
-corpus[[1]][[1]][1:2]
-
-# TDM Matrix
-tdm <- TermDocumentMatrix(corpus)
-
-#Sort words by frequency
-v <- sort(rowSums(as.matrix(tdm)), decreasing = TRUE)
-tdm_df <- data.frame(word = names(v), freq = v)
-
-#Get first 100 words for faster processing
-tdm_df <- head(tdm_df, 100) 
-
-#Word cloud
-wordcloud(
-  words = tdm_df$word,
-  freq = tdm_df$freq,
-  colors = brewer.pal(8, "Dark2")
-)
-
-#LDA
-
-
+# LDA function
 top_terms_by_topic_LDA <- function(input_text, # wektor lub kolumna tekstowa z ramki danych
                                    plot = TRUE, # domyślnie rysuje wykres
                                    k = number_of_topics) # wyznaczona liczba k tematów
@@ -109,5 +76,68 @@ top_terms_by_topic_LDA <- function(input_text, # wektor lub kolumna tekstowa z r
   
 }
 
-number_of_topics = 2
-top_terms_by_topic_LDA(tdm_df$word)
+#' # Data preparation
+# Load data
+data <- read.csv("data/McDonald_s_Reviews.csv")
+
+# Create corpus                
+corpus <- VCorpus(VectorSource(data$review))
+
+
+# Ensure UTF-8 encoding
+corpus <- tm_map(corpus, content_transformer(function(x) iconv(x, to = "UTF-8", sub = "byte")))
+
+# Remove non ASCII characters
+corpus <- tm_map(corpus, content_transformer(function(x) {
+  gsub("[^\x01-\x7F]", "", x) 
+}))
+
+# View content
+corpus[[1]][[1]][1:2]
+
+# Convert pattern to whitespace
+toSpace <- content_transformer(function (x, pattern) gsub(pattern, " ", x))
+
+# Remove tab
+corpus <- tm_map(corpus, toSpace, "[ \t]{2,}")
+
+# Transform conent to lower case
+corpus <- tm_map(corpus, content_transformer(tolower))
+
+# Custom stopwords
+custom_stop_words<- c("mcdonalds", "mcdonald", "mcdonald's", "food", "fast", "burger", "fries")
+
+# Remove unnecessary characters/words
+corpus <- tm_map(corpus, removePunctuation)
+corpus <- tm_map(corpus, removeNumbers)
+corpus <- tm_map(corpus, removeWords, c(stopwords("en"), custom_stop_words))
+corpus <- tm_map(corpus, stripWhitespace)
+
+
+corpus[[1]][[1]][1:2]
+
+# TDM Matrix
+tdm_tfidf <- TermDocumentMatrix(corpus,
+                                control = list(weighting = function(x) weightTfIdf(x, normalize = FALSE)))
+
+
+# Sort words by frequency
+v <- sort(rowSums(as.matrix(tdm_tfidf)), decreasing = TRUE)
+tdm_tfidf <- data.frame(word = names(v), freq = v)
+
+# Get first 100 words for faster processing
+tdm_tfidf <- head(tdm_tfidf, 100) 
+
+#' # Word frequency count
+head(tdm_tfidf, 10)
+
+#' # Word cloud
+wordcloud(
+  words = tdm_tfidf$word,
+  freq = tdm_tfidf$freq,
+  colors = brewer.pal(8, "Dark2")
+)
+
+#' # LDA
+number_of_topics = 3
+top_terms_by_topic_LDA(tdm_tfidf$word)
