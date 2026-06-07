@@ -18,6 +18,10 @@
 
 
 #' # Setup
+
+# Set working directory
+#setwd("Desktop/Coding/mcdonalds-review-analysis")
+
 knitr::opts_chunk$set(
   message = FALSE,
   warning = FALSE
@@ -28,48 +32,43 @@ library(wordcloud)
 library(topicmodels)
 library(tidyverse)
 library(tidytext)
+library(ggplot2)
 
 # LDA function
-top_terms_by_topic_LDA <- function(input_text, # wektor lub kolumna tekstowa z ramki danych
-                                   plot = TRUE, # domyślnie rysuje wykres
-                                   k = number_of_topics) # wyznaczona liczba k tematów
+top_terms_by_topic_LDA <- function(input_text, 
+                                   k = 3,
+                                   plot = TRUE) 
 {    
   corpus <- VCorpus(VectorSource(input_text))
   DTM <- DocumentTermMatrix(corpus)
   
-  # usuń wszystkie puste wiersze w macierzy częstości
-  # ponieważ spowodują błąd dla LDA
-  unique_indexes <- unique(DTM$i) # pobierz indeks każdej unikalnej wartości
-  DTM <- DTM[unique_indexes,]    # pobierz z DTM podzbiór tylko tych unikalnych indeksów
+
+  unique_indexes <- unique(DTM$i) 
+  DTM <- DTM[unique_indexes,]    
+
+  lda <- LDA(DTM, k , control = list(seed = 1234))
+  topics <- tidy(lda, matrix = "beta")
   
-  # wykonaj LDA
-  lda <- LDA(DTM, k = number_of_topics, control = list(seed = 1234))
-  topics <- tidy(lda, matrix = "beta") # pobierz słowa/tematy w uporządkowanym formacie tidy
-  
-  # pobierz dziesięć najczęstszych słów dla każdego tematu
+
   top_terms <- topics  %>%
     group_by(topic) %>%
     top_n(10, beta) %>%
     ungroup() %>%
-    arrange(topic, -beta) # uporządkuj słowa w malejącej kolejności informatywności
+    arrange(topic, -beta) 
   
   
   
-  # rysuj wykres (domyślnie plot = TRUE)
   if(plot == T){
-    # dziesięć najczęstszych słów dla każdego tematu
     top_terms %>%
-      mutate(term = reorder(term, beta)) %>% # posortuj słowa według wartości beta 
-      ggplot(aes(term, beta, fill = factor(topic))) + # rysuj beta według tematu
-      geom_col(show.legend = FALSE) + # wykres kolumnowy
-      facet_wrap(~ topic, scales = "free") + # każdy temat na osobnym wykresie
-      labs(x = "Terminy", y = "β (ważność słowa w temacie)") +
+      mutate(term = reorder(term, beta)) %>%
+      ggplot(aes(term, beta, fill = factor(topic))) +
+      geom_col(show.legend = FALSE) +
+      facet_wrap(~ topic, scales = "free") + 
+      labs(x = "Terms", y = "β (word importance in topic)") +
       coord_flip() +
       theme_minimal() +
       scale_fill_brewer(palette = "Set1")
   }else{ 
-    # jeśli użytkownik nie chce wykresu
-    # wtedy zwróć listę posortowanych słów
     return(top_terms)
   }
   
@@ -129,7 +128,15 @@ tdm_tfidf <- data.frame(word = names(v), freq = v)
 tdm_tfidf <- head(tdm_tfidf, 100) 
 
 #' # Word frequency count
+top_terms <- head(tdm_tfidf, 10)
 head(tdm_tfidf, 10)
+
+# Create a word frequency count plot
+ggplot(top_terms, aes(x = reorder(word, freq), y = freq)) +
+  geom_col(fill = "darkgreen") + 
+  coord_flip() +
+  labs(x = "Term", y = "Total TF-IDF Score") +
+  theme_minimal()
 
 #' # Word cloud
 wordcloud(
@@ -139,5 +146,9 @@ wordcloud(
 )
 
 #' # LDA
-number_of_topics = 3
-top_terms_by_topic_LDA(tdm_tfidf$word)
+
+# Set number of topics
+number_of_topics = 2
+top_terms_by_topic_LDA(tdm_tfidf$word, k = number_of_topics)
+
+
