@@ -1,6 +1,6 @@
 #' ---
 #' title: "McDonald's Review Analysis"
-#' author: " "
+#' author: "Aleksander Mroz, Piotr Podobinski"
 #' date:   " "
 #' output:
 #'   html_document:
@@ -37,7 +37,7 @@ library(ggthemes)
 
 # LDA function
 top_terms_by_topic_LDA <- function(input_text, 
-                                   k = 3,
+                                   k = number_of_topics,
                                    plot = TRUE) 
 {    
   corpus <- VCorpus(VectorSource(input_text))
@@ -47,7 +47,7 @@ top_terms_by_topic_LDA <- function(input_text,
   unique_indexes <- unique(DTM$i) 
   DTM <- DTM[unique_indexes,]    
 
-  lda <- LDA(DTM, k , control = list(seed = 1234))
+  lda <- LDA(DTM, k = number_of_topics, control = list(seed = 1234))
   topics <- tidy(lda, matrix = "beta")
   
 
@@ -116,7 +116,7 @@ custom_stop_words <- c(
 corpus <- tm_map(corpus, removePunctuation)
 corpus <- tm_map(corpus, removeNumbers)
 corpus <- tm_map(corpus, removeWords, stopwords("en"))
-courpus <- tm_map(corpus, removeWords, custom_stop_words)
+corpus <- tm_map(corpus, removeWords, custom_stop_words)
 corpus <- tm_map(corpus, stripWhitespace)
 
 
@@ -153,6 +153,12 @@ wordcloud(
 )
 
 #' # LDA
+
+tdm <- TermDocumentMatrix(corpus)
+tdm_m <- as.matrix(tdm)
+
+v <- sort(rowSums(tdm_m), decreasing = TRUE)
+tdm_df <- data.frame(word = names(v), freq = v)
 
 # Set number of topics
 number_of_topics = 2
