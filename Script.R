@@ -33,6 +33,7 @@ library(topicmodels)
 library(tidyverse)
 library(tidytext)
 library(ggplot2)
+library(ggthemes)
 
 # LDA function
 top_terms_by_topic_LDA <- function(input_text, 
@@ -104,12 +105,18 @@ corpus <- tm_map(corpus, toSpace, "[ \t]{2,}")
 corpus <- tm_map(corpus, content_transformer(tolower))
 
 # Custom stopwords
-custom_stop_words<- c("mcdonalds", "mcdonald", "mcdonald's", "food", "fast", "burger", "fries")
+custom_stop_words <- c(
+  "mcdonalds", "mcdonald", "mc", "mcd",
+  "food", "fast", "burger", "fries",
+  "restaurant", "order", "ordered", "got",
+  "went", "place", "time", "just", "really"
+)
 
 # Remove unnecessary characters/words
 corpus <- tm_map(corpus, removePunctuation)
 corpus <- tm_map(corpus, removeNumbers)
-corpus <- tm_map(corpus, removeWords, c(stopwords("en"), custom_stop_words))
+corpus <- tm_map(corpus, removeWords, stopwords("en"))
+courpus <- tm_map(corpus, removeWords, custom_stop_words)
 corpus <- tm_map(corpus, stripWhitespace)
 
 
@@ -150,5 +157,41 @@ wordcloud(
 # Set number of topics
 number_of_topics = 2
 top_terms_by_topic_LDA(tdm_tfidf$word, k = number_of_topics)
+
+
+#' # Sentiment
+
+# Prepare data for sentiment review
+sentiment_review <- data %>%
+  select(review) %>%
+  mutate(id = row_number()) %>%
+  unnest_tokens(word, review) %>%     
+  anti_join(stop_words, by = "word") %>%    
+  inner_join(get_sentiments("loughran"),   
+             by = "word")
+
+# Filter for only postivie and negatvive 
+sentiment_review2 <- sentiment_review %>%
+  filter(sentiment %in% c("positive", "negative"))
+
+# Counts word per sentiment
+word_counts <- sentiment_review2 %>%
+  count(word, sentiment) %>%
+  group_by(sentiment) %>%
+  top_n(10, n) %>%
+  ungroup() %>%
+  mutate(
+    word2 = fct_reorder(word, n)
+  )
+
+# Create a plot
+ggplot(word_counts, aes(x = word2, y = n, fill = sentiment)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~sentiment, scales = "free") +
+  coord_flip() +
+  labs(x = "Words", y = "Count") +
+  theme_gdocs() +
+  ggtitle("Words count per sentiment (Loughran)") +
+  scale_fill_manual(values = c("firebrick", "darkolivegreen4"))
 
 
