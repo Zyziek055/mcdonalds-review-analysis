@@ -147,6 +147,8 @@ ggplot(top_terms, aes(x = reorder(word, freq), y = freq)) +
   theme_minimal()
 
 #' # Word cloud
+
+# Create word cloud
 wordcloud(
   words = tdm_tfidf$word,
   freq = tdm_tfidf$freq,
@@ -162,7 +164,7 @@ v <- sort(rowSums(tdm_m), decreasing = TRUE)
 tdm_df <- data.frame(word = names(v), freq = v)
 
 # Set number of topics
-number_of_topics = 2
+number_of_topics = 3
 top_terms_by_topic_LDA(tdm_tfidf$word, k = number_of_topics)
 
 
