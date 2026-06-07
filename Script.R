@@ -32,6 +32,7 @@ library(wordcloud)
 library(topicmodels)
 library(tidyverse)
 library(tidytext)
+library(textstem)
 library(ggplot2)
 library(ggthemes)
 
@@ -136,7 +137,7 @@ tdm_tfidf <- head(tdm_tfidf, 100)
 
 #' # Word frequency count
 top_terms <- head(tdm_tfidf, 10)
-head(tdm_tfidf, 10)
+
 
 # Create a word frequency count plot
 ggplot(top_terms, aes(x = reorder(word, freq), y = freq)) +
@@ -154,9 +155,9 @@ wordcloud(
 
 #' # LDA
 
+# Prepare word counts
 tdm <- TermDocumentMatrix(corpus)
 tdm_m <- as.matrix(tdm)
-
 v <- sort(rowSums(tdm_m), decreasing = TRUE)
 tdm_df <- data.frame(word = names(v), freq = v)
 
@@ -167,11 +168,12 @@ top_terms_by_topic_LDA(tdm_tfidf$word, k = number_of_topics)
 
 #' # Sentiment
 
-# Prepare data for sentiment review
+# Prepare data for sentiment review + stemming
 sentiment_review <- data %>%
   select(review) %>%
   mutate(id = row_number()) %>%
   unnest_tokens(word, review) %>%     
+  mutate(word = lemmatize_words(word)) %>%
   anti_join(stop_words, by = "word") %>%    
   inner_join(get_sentiments("loughran"),   
              by = "word")
